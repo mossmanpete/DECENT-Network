@@ -69,7 +69,30 @@ list( APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/contrib/fc
 include( GetGitRevisionDescription )
 get_git_head_revision( GIT_REFSPEC GIT_SHA2 )
 
-find_package( CryptoPP REQUIRED )
+if( NOT VCPKG_TARGET_TRIPLET )
+    message( STATUS "Looking for Crypto++" )
+    find_path( CRYPTOPP_INCLUDE_DIR "cryptopp/integer.h" )
+    find_library( CRYPTOPP_LIBRARIES NAMES "libcryptopp.a" "cryptopp.lib" )
+
+    if( NOT CRYPTOPP_INCLUDE_DIR )
+        message( FATAL_ERROR "Crypto++ includes not found")
+    endif()
+    if( NOT CRYPTOPP_LIBRARIES )
+        message( FATAL_ERROR "Crypto++ libraries not found")
+    endif()
+
+    set( CRYPTOPP_NAME cryptopp )
+    add_library( cryptopp STATIC IMPORTED )
+    set_property( TARGET cryptopp PROPERTY IMPORTED_LOCATION "${CRYPTOPP_LIBRARIES}" )
+    set_property( TARGET cryptopp PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CRYPTOPP_INCLUDE_DIR}" )
+else()
+    find_package( CryptoPP REQUIRED )
+    set( CRYPTOPP_NAME cryptopp-static )
+endif()
+
+mark_as_advanced( CRYPTOPP_LIBRARIES CRYPTOPP_INCLUDE_DIR )
+message( STATUS "Crypto++ found at ${CRYPTOPP_INCLUDE_DIR}, ${CRYPTOPP_LIBRARIES}" )
+
 find_package( PBC REQUIRED )
 
 if( WIN32 )
@@ -89,7 +112,6 @@ if( WIN32 )
     set( CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} /DEBUG" )
 
     add_definitions(-D_WIN32_WINNT=0x0601)
-    add_definitions(-DCRYPTOPP_IMPORTS)
 
 else() # Apple and Linux
 
